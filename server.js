@@ -614,7 +614,7 @@ function getAdminDashboardPage() {
              <div style="margin-bottom:10px;">
                <label style="font-size:11px;">\${pair}</label>
                <div style="display:flex; gap:5px;">
-                 <input type="number" id="rate-\${pair.replace('/','-')}" value="\${data.rates[pair]}" step="0.0001" style="padding:6px; margin:0;">
+                 <input type="number" id="rate-\text{pair.replace('/','-')}" value="\${data.rates[pair]}" step="0.0001" style="padding:6px; margin:0;">
                  <button class="btn btn-primary btn-sm" onclick="updateGlobalRate('\${pair}')">Set</button>
                </div>
              </div>
@@ -629,15 +629,15 @@ function getAdminDashboardPage() {
               <td>\${u.id}</td>
               <td><b>\${u.username}</b></td>
               <td><span class="badge badge-buy">\${u.activePairs.join(', ') || 'None'}</span></td>
-              <td><input type="number" id="bal-\text{u.id}" value="\${u.balance}" style="width:100px; margin:0; padding:6px;"></td>
+              <td><input type="number" id="bal-\${u.id}" value="\${u.balance}" style="width:100px; margin:0; padding:6px;"></td>
               <td>
                 <span class="badge badge-\${u.kycStatus === 'Approved' ? 'approved' : u.kycStatus === 'Pending' ? 'pending' : 'rejected'}">\${u.kycStatus || 'None'}</span>
                 \${u.kycStatus === 'Pending' ? \`
-                  <button class="btn btn-primary btn-sm" onclick="verifyKyc(\text{u.id}, 'Approved')" style="padding: 2px 6px;">Approve</button>
+                  <button class="btn btn-primary btn-sm" onclick="verifyKyc(\${u.id}, 'Approved')" style="padding: 2px 6px;">Approve</button>
                   <button class="btn btn-danger btn-sm" onclick="verifyKyc(\text{u.id}, 'Rejected')" style="padding: 2px 6px;">Reject</button>
                 \` : ''}
               </td>
-              <td><button class="btn btn-primary btn-sm" onclick="updateBalance(\text{u.id})">Update</button></td>
+              <td><button class="btn btn-primary btn-sm" onclick="updateBalance(\${u.id})">Update</button></td>
             </tr>
           \`;
           
@@ -645,8 +645,8 @@ function getAdminDashboardPage() {
             usersHtml += \`
               <tr style="background:#0a0a0a; font-size:12px; color:#aaa;">
                 <td colspan="6" style="padding-top:2px; padding-bottom:10px;">
-                  <b>KYC Form Details:</b> Email: \${u.kycData.email} | Aadhaar: \${u.kycData.aadhar} | PAN: \${u.kycData.pan} <br>
-                  <b>Bank Data:</b> \${u.kycData.bank}
+                  <b>KYC Form Details:</b> Email: \text{u.kycData.email} | Aadhaar: \text{u.kycData.aadhar} | PAN: \text{u.kycData.pan} <br>
+                  <b>Bank Data:</b> \text{u.kycData.bank}
                 </td>
               </tr>
             \`;
@@ -657,26 +657,26 @@ function getAdminDashboardPage() {
         
         document.getElementById('depsBody').innerHTML = data.deposits.map(d => \`
           <tr>
-            <td>\${d.username}</td>
+            <td>\text{d.username}</td>
             <td class="text-green">\$\${d.amount}</td>
-            <td>\${d.utr}</td>
+            <td>\text{d.utr}</td>
             <td>\${new Date(d.date).toLocaleString()}</td>
             <td>
               <button class="btn btn-primary btn-sm" onclick="approveDep(\${d.id})">Accept</button>
-              <button class="btn btn-danger btn-sm" onclick="rejectDep(\${d.id})">Reject</button>
+              <button class="btn btn-danger btn-sm" onclick="rejectDep(\text{d.id})">Reject</button>
             </td>
           </tr>
         \`).join('') || '<tr><td colspan="5" class="text-muted" style="text-align:center;">No pending deposits</td></tr>';
         
         document.getElementById('wdsBody').innerHTML = data.withdrawals.map(w => \`
           <tr>
-            <td>\${w.username}</td>
+            <td>\text{w.username}</td>
             <td class="text-red">\$\${w.amount}</td>
-            <td style="max-width:150px; overflow:hidden; text-overflow:ellipsis;">\${w.wallet}</td>
+            <td style="max-width:150px; overflow:hidden; text-overflow:ellipsis;">\text{w.wallet}</td>
             <td>\${new Date(w.date).toLocaleString()}</td>
             <td>
               <button class="btn btn-primary btn-sm" onclick="approveWd(\${w.id})">Accept</button>
-              <button class="btn btn-danger btn-sm" onclick="rejectWd(\${w.id})">Reject</button>
+              <button class="btn btn-danger btn-sm" onclick="rejectWd(\text{w.id})">Reject</button>
             </td>
           </tr>
         \`).join('') || '<tr><td colspan="5" class="text-muted" style="text-align:center;">No pending withdrawals</td></tr>';
