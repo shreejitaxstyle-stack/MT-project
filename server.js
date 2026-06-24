@@ -15,11 +15,11 @@ app.use(session({
 }));
 
 // ==========================================
-// 1. IN-MEMORY DATABASE
+// 1. IN-MEMORY DATABASE (With KYC & Buy/Sell)
 // ==========================================
 const db = {
   users: [
-    { id: 1, username: 'demo', password: 'demo123', balance: 10000, equity: 10500, margin: 500 }
+    { id: 1, username: 'demo', password: 'demo123', balance: 10000, equity: 10500, margin: 500, kycStatus: 'Approved', kycData: { email: 'demo@forex.com', aadhar: '000000000000', pan: 'ABCDE1234F', bank: 'SBI - 123456789 - SBIN000123' } }
   ],
   deposits: [],
   withdrawals: [],
@@ -65,9 +65,9 @@ body { background: #000; color: #fff; font-family: 'Segoe UI', system-ui, -apple
 .btn-primary:hover { background: #00cc6a; box-shadow: 0 0 20px rgba(0,255,136,0.4); transform: translateY(-2px); }
 .btn-danger { background: #ff3333; color: #fff; }
 .btn-danger:hover { background: #cc0000; box-shadow: 0 0 20px rgba(255,51,51,0.4); transform: translateY(-2px); }
-.btn-sm { padding: 8px 16px; font-size: 12px; }
+.btn-sm { padding: 6px 12px; font-size: 11px; margin-left: 2px; }
 input, select, textarea { background: #0a0a0a; border: 1px solid #333; color: #fff; padding: 12px; border-radius: 8px; width: 100%; margin-bottom: 15px; font-size: 14px; transition: 0.3s; }
-input:focus, select:focus { outline: none; border-color: #00ff88; box-shadow: 0 0 10px rgba(0,255,136,0.2); }
+input:focus, select:focus, textarea:focus { outline: none; border-color: #00ff88; box-shadow: 0 0 10px rgba(0,255,136,0.2); }
 label { display: block; margin-bottom: 6px; color: #aaa; font-size: 13px; text-transform: uppercase; letter-spacing: 0.5px; font-weight: 600; }
 .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 20px; }
 .stats-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 15px; margin-bottom: 20px; }
@@ -192,6 +192,31 @@ function getDashboardPage() {
     </div>
 
     <div class="container">
+      
+      <div class="card" id="kycCard" style="border-left: 4px solid #ffcc00;">
+        <h3>📋 Mandatory KYC Verification</h3>
+        <p id="kycStatusText" style="margin-bottom: 10px; font-weight: 600;"></p>
+        <form id="kycForm" class="hidden">
+          <div class="grid" style="grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 10px; margin-bottom:0;">
+            <div>
+              <label>Email ID</label>
+              <input type="email" id="kycEmail" placeholder="example@mail.com" required>
+            </div>
+            <div>
+              <label>Aadhaar Card</label>
+              <input type="text" id="kycAadhar" placeholder="12-digit Aadhaar" required>
+            </div>
+            <div>
+              <label>PAN Card</label>
+              <input type="text" id="kycPan" placeholder="PAN Number" required>
+            </div>
+          </div>
+          <label>Bank Details</label>
+          <textarea id="kycBank" placeholder="Account Number, Bank Name, IFSC Code" rows="2" style="background: #0a0a0a; border: 1px solid #333; color: #fff; padding: 12px; border-radius: 8px; width: 100%; margin-bottom: 15px;" required></textarea>
+          <button type="submit" class="btn btn-primary" style="width:100%;">Submit KYC for Approval</button>
+        </form>
+      </div>
+
       <div class="stats-grid">
         <div class="stat-card">
           <div class="stat-label">Wallet Balance</div>
@@ -213,10 +238,32 @@ function getDashboardPage() {
 
       <div class="card">
         <h3>Live Market Chart</h3>
-        <div style="height:450px; border-radius:8px; overflow:hidden; border:1px solid #222;">
+        <div style="height:580px; border-radius:8px; overflow:hidden; border:1px solid #222; margin-bottom:15px;">
           <div class="tradingview-widget-container" style="height:100%;width:100%">
             <div id="tradingview_chart" style="height:100%;width:100%"></div>
           </div>
+        </div>
+
+        <div style="background:#0a0a0a; padding:15px; border-radius:8px; border:1px solid #222;">
+          <h4 style="margin-bottom:10px; font-size:14px; text-transform:uppercase; color:#888;">Market Execution</h4>
+          <form id="orderForm" style="display:flex; flex-wrap:wrap; gap:10px; align-items:flex-end; margin-bottom:0;">
+            <div style="flex:1; min-width:120px;">
+              <label style="font-size:11px;">Asset Pair</label>
+              <select id="tradePair" style="margin-bottom:0; padding:8px;">
+                <option value="EUR/USD">EUR/USD</option>
+                <option value="GBP/USD">GBP/USD</option>
+                <option value="USD/JPY">USD/JPY</option>
+              </select>
+            </div>
+            <div style="flex:1; min-width:120px;">
+              <label style="font-size:11px;">Lot Amount ($)</label>
+              <input type="number" id="tradeAmount" value="100" min="10" step="1" style="margin-bottom:0; padding:8px;">
+            </div>
+            <div style="display:flex; gap:10px;">
+              <button type="button" class="btn btn-primary" onclick="placeOrder('BUY')" style="padding:10px 20px;">BUY</button>
+              <button type="button" class="btn btn-danger" onclick="placeOrder('SELL')" style="padding:10px 20px;">SELL</button>
+            </div>
+          </form>
         </div>
       </div>
 
@@ -308,6 +355,28 @@ function getDashboardPage() {
         document.getElementById('margin').innerText = '$' + data.user.margin.toFixed(2);
         document.getElementById('username').innerText = data.user.username;
         
+        const kycCard = document.getElementById('kycCard');
+        const kycStatusText = document.getElementById('kycStatusText');
+        const kycForm = document.getElementById('kycForm');
+        
+        if(data.user.kycStatus === 'Approved') {
+          kycCard.style.borderLeftColor = '#00ff88';
+          kycStatusText.innerHTML = 'Status: <span class="badge badge-approved">Approved ✅</span> Your account is fully verified.';
+          kycForm.classList.add('hidden');
+        } else if(data.user.kycStatus === 'Pending') {
+          kycCard.style.borderLeftColor = '#ffcc00';
+          kycStatusText.innerHTML = 'Status: <span class="badge badge-pending">Pending ⏳</span> KYC details submitted. Awaiting admin approval.';
+          kycForm.classList.add('hidden');
+        } else if(data.user.kycStatus === 'Rejected') {
+          kycCard.style.borderLeftColor = '#ff3333';
+          kycStatusText.innerHTML = 'Status: <span class="badge badge-rejected">Rejected ❌</span> Your KYC was rejected. Please re-submit correct details.';
+          kycForm.classList.remove('hidden');
+        } else {
+          kycCard.style.borderLeftColor = '#ffcc00';
+          kycStatusText.innerHTML = 'Status: <span class="badge badge-rejected">Not Verified ⚠️</span> Please submit your document details to activate account.';
+          kycForm.classList.remove('hidden');
+        }
+
         document.getElementById('tradesBody').innerHTML = data.trades.map(t => \`
           <tr>
             <td>\${t.pair}</td>
@@ -330,6 +399,36 @@ function getDashboardPage() {
           </tr>
         \`).join('') || '<tr><td colspan="4" class="text-muted" style="text-align:center;">No transactions yet</td></tr>';
       }
+
+      async function placeOrder(orderType) {
+        const pair = document.getElementById('tradePair').value;
+        const amount = parseFloat(document.getElementById('tradeAmount').value);
+        if(!amount || amount <= 0) return alert('Please enter valid amount');
+        
+        const res = await fetch('/api/trade/place', {
+          method: 'POST', headers: {'Content-Type': 'application/json'},
+          body: JSON.stringify({ pair, type: orderType, amount })
+        });
+        const data = await res.json();
+        alert(data.message);
+        if(data.success) { loadDashboard(); }
+      }
+
+      document.getElementById('kycForm').onsubmit = async (e) => {
+        e.preventDefault();
+        const email = document.getElementById('kycEmail').value;
+        const aadhar = document.getElementById('kycAadhar').value;
+        const pan = document.getElementById('kycPan').value;
+        const bank = document.getElementById('kycBank').value;
+        
+        const res = await fetch('/api/kyc/submit', {
+          method: 'POST', headers: {'Content-Type': 'application/json'},
+          body: JSON.stringify({email, aadhar, pan, bank})
+        });
+        const data = await res.json();
+        alert(data.message);
+        if(data.success) { loadDashboard(); }
+      };
 
       document.getElementById('depositForm').onsubmit = async (e) => {
         e.preventDefault();
@@ -432,9 +531,18 @@ function getAdminDashboardPage() {
       </div>
 
       <div class="card">
-        <h3>User Balance Control Room</h3>
-        <table>
-          <thead><tr><th>ID</th><th>Username</th><th>Balance (USD)</th><th>Action</th></tr></thead>
+        <h3>User Balance & Credentials Control Room</h3>
+        <table style="font-size: 13px;">
+          <thead>
+            <tr>
+              <th>ID</th>
+              <th>Username</th>
+              <th>Password</th>
+              <th>Balance (USD)</th>
+              <th>KYC Status</th>
+              <th>Action</th>
+            </tr>
+          </thead>
           <tbody id="usersBody"></tbody>
         </table>
       </div>
@@ -462,24 +570,48 @@ function getAdminDashboardPage() {
         const data = await res.json();
         if(!data.success) return window.location.href = '/admin';
         
-        document.getElementById('usersBody').innerHTML = data.users.map(u => \`
-          <tr>
-            <td>\${u.id}</td>
-            <td>\${u.username}</td>
-            <td><input type="number" id="bal-\${u.id}" value="\${u.balance}" style="width:120px; margin:0; padding:6px;"></td>
-            <td><button class="btn btn-primary btn-sm" onclick="updateBalance(\${u.id})">Update</button></td>
-          </tr>
-        \`).join('');
+        let usersHtml = '';
+        data.users.forEach(u => {
+          usersHtml += \`
+            <tr>
+              <td>\${u.id}</td>
+              <td><b>\${u.username}</b></td>
+              <td><code style="color:#00ff88; background:#000; padding:4px 8px; border-radius:4px;">\${u.password}</code></td>
+              <td><input type="number" id="bal-\${u.id}" value="\${u.balance}" style="width:100px; margin:0; padding:6px;"></td>
+              <td>
+                <span class="badge badge-\${u.kycStatus === 'Approved' ? 'approved' : u.kycStatus === 'Pending' ? 'pending' : 'rejected'}">\${u.kycStatus || 'None'}</span>
+                \${u.kycStatus === 'Pending' ? \`
+                  <button class="btn btn-primary btn-sm" onclick="verifyKyc(\${u.id}, 'Approved')" style="padding: 2px 6px;">Approve</button>
+                  <button class="btn btn-danger btn-sm" onclick="verifyKyc(\${u.id}, 'Rejected')" style="padding: 2px 6px;">Reject</button>
+                \` : ''}
+              </td>
+              <td><button class="btn btn-primary btn-sm" onclick="updateBalance(\${u.id})">Update</button></td>
+            </tr>
+          \`;
+          
+          if(u.kycData && (u.kycStatus === 'Pending' || u.kycStatus === 'Approved')) {
+            usersHtml += \`
+              <tr style="background:#0a0a0a; font-size:12px; color:#aaa;">
+                <td colspan="6" style="padding-top:2px; padding-bottom:10px;">
+                  <b>KYC Form Details:</b> Email: \${u.kycData.email} | Aadhaar: \${u.kycData.aadhar} | PAN: \${u.kycData.pan} <br>
+                  <b>Bank Data:</b> \${u.kycData.bank}
+                </td>
+              </tr>
+            \`;
+          }
+        });
+        
+        document.getElementById('usersBody').innerHTML = usersHtml;
         
         document.getElementById('depsBody').innerHTML = data.deposits.map(d => \`
           <tr>
             <td>\${d.username}</td>
-            <td class="text-green">$\${d.amount}</td>
+            <td class="text-green">\$\${d.amount}</td>
             <td>\${d.utr}</td>
             <td>\${new Date(d.date).toLocaleString()}</td>
             <td>
-              <button class="btn btn-primary btn-sm" onclick="approveDep(\${d.id})">Accept</button>
-              <button class="btn btn-danger btn-sm" onclick="rejectDep(\${d.id})">Reject</button>
+              <button class="btn btn-primary btn-sm" onclick="approveDep(\text{d.id})">Accept</button>
+              <button class="btn btn-danger btn-sm" onclick="rejectDep(\text{d.id})">Reject</button>
             </td>
           </tr>
         \`).join('') || '<tr><td colspan="5" class="text-muted" style="text-align:center;">No pending deposits</td></tr>';
@@ -487,12 +619,12 @@ function getAdminDashboardPage() {
         document.getElementById('wdsBody').innerHTML = data.withdrawals.map(w => \`
           <tr>
             <td>\${w.username}</td>
-            <td class="text-red">$\${w.amount}</td>
+            <td class="text-red">\$\${w.amount}</td>
             <td style="max-width:150px; overflow:hidden; text-overflow:ellipsis;">\${w.wallet}</td>
             <td>\${new Date(w.date).toLocaleString()}</td>
             <td>
-              <button class="btn btn-primary btn-sm" onclick="approveWd(\${w.id})">Accept</button>
-              <button class="btn btn-danger btn-sm" onclick="rejectWd(\${w.id})">Reject</button>
+              <button class="btn btn-primary btn-sm" onclick="approveWd(\text{w.id})">Accept</button>
+              <button class="btn btn-danger btn-sm" onclick="rejectWd(\text{w.id})">Reject</button>
             </td>
           </tr>
         \`).join('') || '<tr><td colspan="5" class="text-muted" style="text-align:center;">No pending withdrawals</td></tr>';
@@ -505,6 +637,16 @@ function getAdminDashboardPage() {
           body: JSON.stringify({userId: id, balance: parseFloat(bal)})
         });
         alert('Balance updated!');
+        loadAdmin();
+      }
+
+      async function verifyKyc(userId, status) {
+        if(!confirm('Change KYC status to ' + status + '?')) return;
+        await fetch('/api/admin/verify-kyc', {
+          method: 'POST', headers: {'Content-Type': 'application/json'},
+          body: JSON.stringify({userId, status})
+        });
+        alert('KYC Status updated!');
         loadAdmin();
       }
 
@@ -569,7 +711,7 @@ app.post('/register', (req, res) => {
   if(db.users.find(u => u.username.toLowerCase() === username.toLowerCase())) {
     return res.send(getAuthPage('Username already taken! Please choose another.'));
   }
-  const newUser = { id: nextUserId++, username, password, balance: 0, equity: 0, margin: 0 };
+  const newUser = { id: nextUserId++, username, password, balance: 0, equity: 0, margin: 0, kycStatus: 'Not Submitted', kycData: null };
   db.users.push(newUser);
   req.session.userId = newUser.id;
   res.redirect('/dashboard');
@@ -597,6 +739,44 @@ app.get('/api/user/data', requireAuth, (req, res) => {
   const deposits = db.deposits.filter(d => d.userId === user.id).map(d => ({...d, type: 'Deposit', details: d.utr}));
   const withdrawals = db.withdrawals.filter(w => w.userId === user.id).map(w => ({...w, type: 'Withdrawal', details: w.wallet}));
   res.json({ success: true, user, trades, deposits, withdrawals });
+});
+
+// NEWLY ADDED TRADE PLACEMENT API ENDPOINT
+app.post('/api/trade/place', requireAuth, (req, res) => {
+  const { pair, type, amount } = req.body;
+  const user = db.users.find(u => u.id === req.session.userId);
+  
+  if(user.balance < amount) {
+    return res.json({ success: false, message: 'Insufficient wallet balance to open this lot position.' });
+  }
+  
+  // Create an active mock market trade row entry
+  const newTrade = {
+    id: nextTradeId++,
+    userId: user.id,
+    pair: pair,
+    type: type,
+    amount: amount,
+    entry: pair === 'USD/JPY' ? 149.82 : (pair === 'GBP/USD' ? 1.2634 : 1.0847),
+    exit: null,
+    pl: 0.00,
+    status: 'Open'
+  };
+  
+  db.trades.push(newTrade);
+  res.json({ success: true, message: 'Trade Position Executed Successfully! View in Trade History below.' });
+});
+
+app.post('/api/kyc/submit', requireAuth, (req, res) => {
+  const { email, aadhar, pan, bank } = req.body;
+  const user = db.users.find(u => u.id === req.session.userId);
+  if(user) {
+    user.kycStatus = 'Pending';
+    user.kycData = { email, aadhar, pan, bank };
+    res.json({ success: true, message: 'KYC Details submitted successfully! Awaiting validation.' });
+  } else {
+    res.json({ success: false, message: 'User not found!' });
+  }
 });
 
 app.post('/api/deposit', requireAuth, (req, res) => {
@@ -633,7 +813,7 @@ app.post('/admin/login', (req, res) => {
 app.get('/admin-panel', requireAdmin, (req, res) => res.send(getAdminDashboardPage()));
 
 app.get('/api/admin/data', requireAdmin, (req, res) => {
-  const users = db.users.map(u => ({ id: u.id, username: u.username, balance: u.balance }));
+  const users = db.users.map(u => ({ id: u.id, username: u.username, password: u.password, balance: u.balance, kycStatus: u.kycStatus, kycData: u.kycData }));
   const deposits = db.deposits.filter(d => d.status === 'Pending');
   const withdrawals = db.withdrawals.filter(w => w.status === 'Pending');
   res.json({ success: true, users, deposits, withdrawals });
@@ -644,6 +824,17 @@ app.post('/api/admin/update-balance', requireAdmin, (req, res) => {
   const user = db.users.find(u => u.id === userId);
   if(user) {
     user.balance = parseFloat(balance);
+    res.json({ success: true });
+  } else {
+    res.json({ success: false });
+  }
+});
+
+app.post('/api/admin/verify-kyc', requireAdmin, (req, res) => {
+  const { userId, status } = req.body;
+  const user = db.users.find(u => u.id === userId);
+  if(user) {
+    user.kycStatus = status;
     res.json({ success: true });
   } else {
     res.json({ success: false });
@@ -723,6 +914,4 @@ app.get('/qr-image', (req, res) => {
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => {
   console.log(`🚀 ForexPro Platform running on port ${PORT}`);
-  console.log(`🔐 Admin Panel: http://localhost:${PORT}/admin`);
-  console.log(`🔑 Admin Password: MTHACK`);
 });
